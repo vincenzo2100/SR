@@ -9,8 +9,10 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use App\Entity\Course;
 use App\Entity\Student;
+use App\Entity\Teacher;
 use App\Entity\Grade;
 
 class TeacherController extends AbstractController
@@ -26,23 +28,25 @@ class TeacherController extends AbstractController
                 'name'=> $course->getName(),
                 'currentCapacity' => $course->getCurrentCapacity(),
                 'maxCapacity' => $course->getMaxCapacity(),
-                'teacher'=> $course->getTeacher(),
-                'students' => $course->getStudents(),
+                'teacher'=> $course->getTeacher()->getId() . " " . $course->getTeacher()->getFirstName() . " " . $course->getTeacher()->getLastName(),
                 ];
        
     }
         return $this->json($data);
     }
     #[Route('api/teacher/new', name: 'app_teacher_new', methods: ['post'])]
-    public function createCourse(Request $request, ManagerRegistry $registry): Response
+    public function createCourse(#[CurrentUser] $user = null,Request $request, ManagerRegistry $registry): Response
     {
+        $entityManager = $registry->getManager();
+        $teacher = $entityManager->getRepository(Teacher::class)->find($user->getTeacher());
         $requestData = json_decode($request->getContent(), true);
         $course = new Course();
+        $course->setTeacher($teacher);
         $course->setName($requestData['name']);
         $course->setMaxCapacity($requestData['maxCapacity']);
         $course->setCurrentCapacity(0);
         $course->setRegisterAvailable(true);
-        $entityManager = $registry->getManager();
+        
         $entityManager->persist($course);
         $entityManager->flush();
         return new Response('Course created successfully', Response::HTTP_CREATED);
@@ -60,6 +64,9 @@ class TeacherController extends AbstractController
 
         if (isset($requestData['name'])) {
             $course->setName($requestData['name']);
+        }
+        if (isset($requestData['maxCapacity'])) {
+            $course->setMaxCapacity($requestData['maxCapacity']);
         }
         $entityManager->flush();
         return new Response('Course updated successfully', Response::HTTP_OK);
@@ -128,14 +135,22 @@ class TeacherController extends AbstractController
     #[Route('api/teacher/getStudents/{id}', name: 'app_teacher_getStudents', methods: ['get'])]
     public function getStudents(ManagerRegistry $registry,$id): JsonResponse
     {
-        $courses = $registry->getRepository(Course::class)->find($id);
-      
-      
-            $data[] = [
-                'students' => $courses->getStudents(),
+        $courses = $registry->getRepository(Course::class)->findAll();
+        $data = [];
+        foreach ($courses as $course) {
+            $students = [];
+            foreach ($course->getStudents() as $student) {
+                $students[] = [
+                    'id' => $student->getId(),
+                    'firstName' => $student->getFirstName(),
+                    'lastName' => $student->getLastName(),
+                    // Add more student information here if needed
                 ];
-       
-    
+            }
+            $data[] = [
+                'students' => $students,
+            ];
+        }
         return $this->json($data);
     }
 

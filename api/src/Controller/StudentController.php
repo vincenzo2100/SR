@@ -10,6 +10,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use App\Entity\Course;
 use App\Entity\Student;
 
@@ -17,36 +18,13 @@ use App\Entity\Student;
 
 class StudentController extends AbstractController 
 {
-    #[Route('api/student/register', name: 'app_student_register', methods:['POST'])]
-    public function register(Request $request, ManagerRegistry $registry): JsonResponse
-    {
-        // Pobierz dane z żądania
-        $data = json_decode($request->getContent(), true);
-
-        // Utwórz nowego studenta
-        $student = new Student();
-        $student->setUsername($data['username']);
-        $student->setMail($data['email']);
-        $student->setPassword($data['password']);
-        $student->setFirstname($data['firstname']);
-        $student->setLastname($data['lastname']);
-        // Dodaj inne dane studenta, jeśli potrzebne
-
-        // Zapisz studenta do bazy danych
-        $entityManager =$registry->getManager(); 
-        $entityManager->persist($student);
-        $entityManager->flush();
-
-        return new JsonResponse(['message' => 'Student registered successfully']);
-    }
-
-    
-
+   
     #[Route('api/student/enroll-course/{courseId}', name: 'app_student_enroll', methods:['POST'])]
-    public function enrollCourse(Request $request, ManagerRegistry $registry, $courseId): Response
+    public function enrollCourse(#[CurrentUser] $user = null,Request $request, ManagerRegistry $registry, $courseId): Response
     {
-        $student = $registry -> getRepository(Student::class)->find(2);
         $entityManager = $registry->getManager();
+        $student = $entityManager->getRepository(Student::class)->find($user->getStudent());
+        
         $course = $entityManager->getRepository(Course::class)->find($courseId);
         if (!$course) {
             return new Response('Course not found', Response::HTTP_NOT_FOUND);
@@ -67,13 +45,13 @@ class StudentController extends AbstractController
     }
 
     #[Route('api/student/withdraw-course/{courseId}', name: 'withdraw_course', methods: ['POST'])]
-    public function withdrawCourse(Request $request, ManagerRegistry $registry, $courseId): Response
+    public function withdrawCourse(#[CurrentUser] $user = null,Request $request, ManagerRegistry $registry, $courseId): Response
     {
-        // Retrieve the logged-in student (you might have your own authentication logic)
-        $student =  $registry -> getRepository(Student::class)->find(2);
+        $entityManager = $registry->getManager();
+        $student = $entityManager->getRepository(Student::class)->find($user->getStudent());
 
         // Retrieve the course from the database
-        $entityManager = $registry->getManager();
+        
         $course = $entityManager->getRepository(Course::class)->find($courseId);
 
         // Check if the course exists
@@ -100,10 +78,10 @@ class StudentController extends AbstractController
     }
     
     #[Route('api/student/showGrade/{courseId}', name: 'showGrade', methods: ['GET'])]
-    public function showGrade(Request $request, ManagerRegistry $registry,$courseId) : JsonResponse
+    public function showGrade(#[CurrentUser] $user = null,Request $request, ManagerRegistry $registry,$courseId) : JsonResponse
     {
         $entityManager = $registry->getManager();
-        $student = $entityManager->getRepository(Student::class)->find(2);
+        $student = $entityManager->getRepository(Student::class)->find($user->getStudent());
         if (!$student) {
             return new JsonResponse(['message' => 'Student not found'], Response::HTTP_NOT_FOUND);
         }

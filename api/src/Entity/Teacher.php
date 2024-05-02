@@ -36,7 +36,9 @@ class Teacher
     #[ORM\Column(length: 255)]
     private ?string $password = null;
 
-
+    #[ORM\OneToOne(inversedBy: 'teacher', cascade: ['persist', 'remove'])]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?User $user = null;
 
     public function __construct()
     {
@@ -137,6 +139,23 @@ class Teacher
 
         return $this;
     }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(User $user): static
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+
+    
+
+   
 
     
 }
