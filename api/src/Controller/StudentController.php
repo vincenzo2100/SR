@@ -104,10 +104,12 @@ class StudentController extends AbstractController
         }
         $grades = [];
         foreach ($student->getGrades() as $grade) {
-            $grades[] = [
-                'course' => $grade->getCourse()->getName(),
-                'grade' => $grade->getValue()
-            ];
+            if ($grade->getCourse()->getId() == $courseId) {
+                $grades[] = [
+                    'course' => $grade->getCourse()->getName(),
+                    'grade' => $grade->getValue()
+                ];
+            }
         }
 
         return new JsonResponse(['grades' => $grades], Response::HTTP_OK);
