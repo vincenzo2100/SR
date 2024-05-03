@@ -73,18 +73,23 @@ class TeacherController extends AbstractController
     }
 
     #[Route('api/teacher/delete/{id}', name:'app_teacher_delete', methods: ['delete'])]
-    public function deleteCourse(Request $request, ManagerRegistry $registry,$id): Response
+    public function deleteCourse(Request $request, ManagerRegistry $registry, $id): Response
     {
         $entityManager = $registry->getManager();
         $course = $entityManager->getRepository(Course::class)->find($id);
-
+ 
         if (!$course) {
             return new Response('Course not found', Response::HTTP_NOT_FOUND);
         }
-
+ 
+        foreach ($course->getGrades() as $grade) {
+            $entityManager->remove($grade);
+        }
+ 
+ 
         $entityManager->remove($course);
         $entityManager->flush();
-
+ 
         return new Response('Course deleted successfully', Response::HTTP_OK);
     }
 
@@ -113,45 +118,44 @@ class TeacherController extends AbstractController
     #[Route('api/teacher/unblock-registration/{id}', name: 'unblock_registration', methods: ['PUT'])]
     public function unblockRegistration(ManagerRegistry $registry, $id): Response
     {
-        // Retrieve the course from the database
+       
         $entityManager = $registry->getManager();
         $course = $entityManager->getRepository(Course::class)->find($id);
 
-        // Check if the course exists
+        
         if (!$course) {
             return new Response('Course not found', Response::HTTP_NOT_FOUND);
         }
 
-        // Unblock registration by setting maxCapacity back to its original value
+        
         $course->setRegisterAvailable(true);
 
-        // Persist changes to the database
+        
         $entityManager->flush();
 
-        // Return a success response
         return new Response('Registration unblocked successfully', Response::HTTP_OK);
     }
 
+    //POPRAWIĆ BO SZUKA WSZYSTKICH
     #[Route('api/teacher/getStudents/{id}', name: 'app_teacher_getStudents', methods: ['get'])]
-    public function getStudents(ManagerRegistry $registry,$id): JsonResponse
+    public function getStudents(ManagerRegistry $registry, $id): JsonResponse
     {
-        $courses = $registry->getRepository(Course::class)->findAll();
-        $data = [];
-        foreach ($courses as $course) {
-            $students = [];
-            foreach ($course->getStudents() as $student) {
-                $students[] = [
-                    'id' => $student->getId(),
-                    'firstName' => $student->getFirstName(),
-                    'lastName' => $student->getLastName(),
-                    // Add more student information here if needed
-                ];
-            }
-            $data[] = [
-                'students' => $students,
+        $course = $registry->getRepository(Course::class)->find($id);
+ 
+        if (!$course) {
+            return $this->json(['error' => 'Course not found'], 404);
+        }
+ 
+        $students = [];
+        foreach ($course->getStudents() as $student) {
+            $students[] = [
+                'id' => $student->getId(),
+                'firstName' => $student->getFirstName(),
+                'lastName' => $student->getLastName(),
             ];
         }
-        return $this->json($data);
+ 
+        return $this->json(['students' => $students]);
     }
 
     #[Route('api/teacher/course/{courseId}/student/{studentId}/grade', name: 'app_teacher_giveGrade', methods: ['POST'])]

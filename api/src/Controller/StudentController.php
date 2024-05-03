@@ -18,7 +18,25 @@ use App\Entity\Student;
 
 class StudentController extends AbstractController 
 {
-   
+    #[Route('api/student/showCourses', name: 'app_student_show', methods:['GET'])]
+    public function showCourses(ManagerRegistry $registry) : JsonResponse
+    {
+        $courses = $registry->getRepository(Course::class)->findAll();
+        $data = [];
+        foreach ($courses as $course) {
+            $data[] = [
+                'id'=> $course->getId(),
+                'name'=> $course->getName(),
+                'teacher'=> $course->getTeacher()->getFirstName() . " " . $course -> getTeacher()->getLastName(),
+                'howManyPeopleAreSigned' => $course->getCurrentCapacity() . " / " . $course->getMaxCapacity(),
+                'isRegisterAvailable' => $course->isRegisterAvailable()
+                ];
+       
+    }
+        return $this->json($data);
+    }
+
+
     #[Route('api/student/enroll-course/{courseId}', name: 'app_student_enroll', methods:['POST'])]
     public function enrollCourse(#[CurrentUser] $user = null,Request $request, ManagerRegistry $registry, $courseId): Response
     {
@@ -50,30 +68,29 @@ class StudentController extends AbstractController
         $entityManager = $registry->getManager();
         $student = $entityManager->getRepository(Student::class)->find($user->getStudent());
 
-        // Retrieve the course from the database
+        
         
         $course = $entityManager->getRepository(Course::class)->find($courseId);
 
-        // Check if the course exists
+       
         if (!$course) {
             return new Response('Course not found', Response::HTTP_NOT_FOUND);
         }
 
-        // Check if the student is enrolled in the course
+       
         if (!$course->getStudents()->contains($student)) {
             return new Response('Student is not enrolled in this course', Response::HTTP_BAD_REQUEST);
         }
 
-        // Withdraw the student from the course
+        
         $course->removeStudent($student);
 
-        // Decrement the currentCapacity of the course
         $course->setCurrentCapacity($course->getCurrentCapacity() - 1);
 
-        // Persist changes to the database
+        
         $entityManager->flush();
 
-        // Return a success response
+       
         return new Response('Withdrawn from the course successfully', Response::HTTP_OK);
     }
     
